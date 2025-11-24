@@ -1,34 +1,62 @@
-from controller import Robot
-from sensors import IRSensors
-from vision import Vision
-from motors import Motors
-from state_machine import RobotState
+from controller import Robot, Camera
+import numpy as np
 
-class CleanerBot:
-    def __init__(self):
-        self.robot = Robot()
-        self.ir = IRSensors(self.robot)
-        self.vision = Vision(self.robot)
-        self.motors = Motors(self.robot)
-        self.state = RobotState.CLEANING
+from navigation import avoid_obstacle
+from perception import detect_red_zone
+from behavior_fsm import FSM
 
-    def run(self):
-        timestep = int(self.robot.getBasicTimeStep())
-        while self.robot.step(timestep) != -1:
+TIME_STEP = 64
 
-            if self.vision.detects_red():
-                self.state = RobotState.FOCUS
-            else:
-                self.state = RobotState.CLEANING
+robot = Robot()
 
-            if self.state == RobotState.CLEANING:
-                if self.ir.obstacle_detected():
-                    self.motors.turn_left()
-                else:
-                    self.motors.forward()
+# Motors
+left_motor = robot.getDevice("left wheel motor")
+right_motor = robot.getDevice("right wheel motor")
+left_motor.setPosition(float('inf'))
+right_motor.setPosition(float('inf'))
+left_motor.setVelocity(0)
+right_motor.setVelocity(0)
 
-            elif self.state == RobotState.FOCUS:
-                self.motors.stop()
+# IR sensors
+ps = []
+for i in range(8):
+    sensor = robot.getDevice(f"ps{i}")
+    sensor.enable(TIME_STEP)
+    ps.append(sensor)
 
-if __name__ == '__main__':
-    CleanerBot().run()
+# Camera
+camera = robot.getDevice("camera")
+camera.enable(TIME_STEP)
+
+# FSM instance
+fsm = FSM()
+
+print(f"Initial state: {fsm.state}")
+
+while robot.step(TIME_STEP) != -1:
+
+    # --- 1. Get camera image and detect red zone ---
+    image = camera.getImage()
+    red_detected = False
+
+    if image:
+        img = np.frombuffer(image, np.uint8).reshape((camera.getHeight(), camera.getWidth(), 4))
+        rgb = img[:, :, :3]
+        red_detected = detect_red_zone(rgb)
+
+    # --- 2. State transition ---
+    fsm.update(red_detected)
+
+    # --- 3. Act according to state ---
+    if fsm.state == "explore":
+        vl, vr = avoid_obstacle(ps)
+
+    elif fsm.state == "focused_cleaning":
+        vl, vr = 1.5, 1.5  # slow sweeping behavior
+
+    elif fsm.state == "avoid":
+        vl, vr = -2.0, 2.0
+
+    # --- 4. Send motor commands ---
+    left_motor.setVelocity(vl)
+    right_motor.setVelocity(vr)
