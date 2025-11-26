@@ -1,13 +1,15 @@
-from controller import Robot, Camera
-import numpy as np
-
-from navigation import avoid_obstacle
+from controller import Robot, Camera, Motor
 from perception import detect_red_zone
-from behavior_fsm import FSM
+from navigation import avoid_obstacles, forward
+from behavior_fsm import BehaviorFSM
 
-TIME_STEP = 64
+TIME_STEP = 32
 
 robot = Robot()
+
+# Camera
+camera = robot.getDevice("camera")
+camera.enable(TIME_STEP)
 
 # Motors
 left_motor = robot.getDevice("left wheel motor")
@@ -17,46 +19,76 @@ right_motor.setPosition(float('inf'))
 left_motor.setVelocity(0)
 right_motor.setVelocity(0)
 
-# IR sensors
-ps = []
-for i in range(8):
-    sensor = robot.getDevice(f"ps{i}")
-    sensor.enable(TIME_STEP)
-    ps.append(sensor)
+# FSM
+fsm = BehaviorFSM()
 
-# Camera
-camera = robot.getDevice("camera")
-camera.enable(TIME_STEP)
+# Cooldown: prevents repeated CLEAN triggers
+clean_cooldown = 0.0    # seconds
 
-# FSM instance
-fsm = FSM()
-
-print(f"Initial state: {fsm.state}")
+print("Python cleaner_controller started.")
 
 while robot.step(TIME_STEP) != -1:
 
-    # --- 1. Get camera image and detect red zone ---
+    # Cooldown countdown
+    if clean_cooldown > 0:
+        clean_cooldown -= TIME_STEP / 1000.0
+
+    ### 1. Read camera ###
     image = camera.getImage()
-    red_detected = False
+    if image is None:
+        print("Camera not ready")
+        continue
 
-    if image:
-        img = np.frombuffer(image, np.uint8).reshape((camera.getHeight(), camera.getWidth(), 4))
-        rgb = img[:, :, :3]
-        red_detected = detect_red_zone(rgb)
+    ### 2. Perception ###
+    red_detected = detect_red_zone(camera, image)
+    print("Red zone detected:", red_detected)
 
-    # --- 2. State transition ---
-    fsm.update(red_detected)
+    ### 3. Update FSM ###
+    # Only allow red→CLEAN if cooldown has expired
+    if red_detected and clean_cooldown <= 0:
+        fsm.update(True)
+    else:
+        fsm.update(False)
 
-    # --- 3. Act according to state ---
-    if fsm.state == "explore":
-        vl, vr = avoid_obstacle(ps)
+    state = fsm.state
+    print("FSM State:", state)
 
-    elif fsm.state == "focused_cleaning":
-        vl, vr = 1.5, 1.5  # slow sweeping behavior
+    ### 4. Execute state behaviour ###
+    if state == "EXPLORE":
+        avoid_obstacles(robot, left_motor, right_motor)
 
-    elif fsm.state == "avoid":
-        vl, vr = -2.0, 2.0
+    elif state == "CLEAN":
+        print("=== ENTER CLEAN MODE ===")
 
-    # --- 4. Send motor commands ---
-    left_motor.setVelocity(vl)
-    right_motor.setVelocity(vr)
+        # Step 1: Move forward for 2 seconds
+        start = robot.getTime()
+        while robot.getTime() - start < 2.0:
+            left_motor.setVelocity(3.0)
+            right_motor.setVelocity(3.0)
+            robot.step(TIME_STEP)
+
+        # Step 2: Stop for 3 seconds (simulate cleaning)
+        start = robot.getTime()
+        print("[CLEANING] Stopping for 3 seconds…")
+        while robot.getTime() - start < 3.0:
+            left_motor.setVelocity(0)
+            right_motor.setVelocity(0)
+            robot.step(TIME_STEP)
+
+        # Step 3: Rotate 180 degrees
+        print("[ROTATE] Turning 180 degrees")
+        left_motor.setVelocity(3.0)
+        right_motor.setVelocity(-3.0)
+        robot.step(900)   # tune if needed
+
+        print("=== CLEAN CYCLE COMPLETE ===")
+
+        # Step 4: Apply cooldown to avoid instant re-trigger
+        clean_cooldown = 5.0   # seconds
+
+        # Step 5: Return to EXPLORE mode
+        fsm.state = "EXPLORE"
+        continue
+
+    else:
+        forward(left_motor, right_motor)
