@@ -63,22 +63,25 @@ while robot.step(TIME_STEP) != -1:
         # Step 1: Move forward for 2 seconds
         start = robot.getTime()
         while robot.getTime() - start < 2.0:
-            left_motor.setVelocity(3.0)
-            right_motor.setVelocity(3.0)
+            # left_motor.setVelocity(3.0)
+            # right_motor.setVelocity(3.0)
+            forward(left_motor, right_motor,5.0)
             robot.step(TIME_STEP)
 
         # Step 2: Stop for 3 seconds (simulate cleaning)
         start = robot.getTime()
         print("[CLEANING] Stopping for 3 seconds…")
-        while robot.getTime() - start < 3.0:
+        while robot.getTime() - start < 4.0:
             left_motor.setVelocity(0)
             right_motor.setVelocity(0)
             robot.step(TIME_STEP)
 
-        # Step 3: Rotate 180 degrees
+        # Step 3: Rotate 90 degrees
         print("[ROTATE] Turning 180 degrees")
-        left_motor.setVelocity(3.0)
-        right_motor.setVelocity(-3.0)
+        # left_motor.setVelocity(3.0)
+        # right_motor.setVelocity(-3.0)
+        left_motor.setVelocity(5.0)
+        right_motor.setVelocity(-2.5)
         robot.step(900)   # tune if needed
 
         print("=== CLEAN CYCLE COMPLETE ===")
