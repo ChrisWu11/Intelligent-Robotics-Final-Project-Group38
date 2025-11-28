@@ -4,32 +4,27 @@ import json
 app = FastAPI()
 
 active_clients = []
+active_supervisors = []
 cleaned_zones = set()
 
-@app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
+@app.websocket("/ws/supervisor")
+async def websocket_supervisor(websocket: WebSocket):
     await websocket.accept()
-    active_clients.append(websocket)
-    print("[WS] client connected.")
+    active_supervisors.append(websocket)
+    print("[WS] Supervisor connected.")
 
     try:
         while True:
             data = await websocket.receive_text()
             msg = json.loads(data)
-
-            # 如果 controller 上传 cleaned_zone
-            if msg.get("cleaned_zone") is not None:
-                cleaned_zones.add(msg["cleaned_zone"])
-
-            # 广播
-            for client in active_clients:
-                await client.send_text(json.dumps({
-                    "x": msg["x"],
-                    "y": msg["y"],
-                    "state": msg["state"],
-                    "cleaned_zones": list(cleaned_zones)
+            print('msg',msg)
+            # 广播 supervisor 坐标到前端
+            for c in active_clients:
+                await c.send_text(json.dumps({
+                    "supervisor_x": msg["x"],
+                    "supervisor_y": msg["y"]
                 }))
 
     except WebSocketDisconnect:
-        active_clients.remove(websocket)
-        print("[WS] client disconnected.")
+        active_supervisors.remove(websocket)
+        print("[WS] Supervisor disconnected.")
