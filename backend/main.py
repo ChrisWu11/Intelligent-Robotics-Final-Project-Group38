@@ -7,6 +7,21 @@ active_clients = []
 active_supervisors = []
 cleaned_zones = set()
 
+@app.websocket("/ws")
+async def websocket_frontend(websocket: WebSocket):
+    await websocket.accept()
+    active_clients.append(websocket)
+    print("[WS] Frontend connected.")
+
+    try:
+        while True:
+            # 前端一般不会发消息，这里只是防掉线
+            await websocket.receive_text()
+
+    except WebSocketDisconnect:
+        active_clients.remove(websocket)
+        print("[WS] Frontend disconnected.")
+
 @app.websocket("/ws/supervisor")
 async def websocket_supervisor(websocket: WebSocket):
     await websocket.accept()
