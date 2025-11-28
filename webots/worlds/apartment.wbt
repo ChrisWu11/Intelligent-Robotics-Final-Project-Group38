@@ -651,7 +651,7 @@ LandscapePainting {
   translation -0.1845 -4.9252 1.6286
   rotation 0 0 1 3.14159
 }
-E-puck {
+DEF CLEANER E-puck {
   hidden position_0_0 374.8451198562492
   hidden position_0_1 367.76837521677714
   hidden rotation_1 0 -1 0 2.1459985745259904
@@ -660,4 +660,10 @@ E-puck {
   rotation -0.0008464466159766837 0.00043692680177122073 0.999999546311445 0.0942144
   name "cleaner_robot"
   controller "cleaner_controller"
+}
+
+Robot {
+  supervisor TRUE
+  controller "monitor_supervisor"
+  translation 0 0 0
 }
