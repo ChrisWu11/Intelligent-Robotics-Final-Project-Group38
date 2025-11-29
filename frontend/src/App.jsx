@@ -2,39 +2,58 @@ import { useEffect, useState } from "react";
 
 export default function App() {
   const [path, setPath] = useState([]);
+  const [cleaned, setCleaned] = useState([]);
+  const [robotState, setRobotState] = useState("EXPLORE");
 
-  // Webots world boundary
+  // Webots world boundaries
   const minX = -10;
   const maxX = 2;
   const minY = -7;
   const maxY = 1;
 
-  const width = 1200;   // 展示区域宽度
-  const height = 800;   // 展示区域高度
+  const width = 1200;
+  const height = 800;
 
-  // Convert Webots → screen
+  // Convert world coords → screen coords
   const convert = (x, y) => {
-    const screenX = ((x - minX) / (maxX - minX)) * width;
-    const screenY = height - ((y - minY) / (maxY - minY)) * height;
-    return { x: screenX, y: screenY };
+    return {
+      x: ((x - minX) / (maxX - minX)) * width,
+      y: height - ((y - minY) / (maxY - minY)) * height,
+    };
   };
 
-  // Room corners
+  // Room frame polygon
   const c1 = convert(minX, minY);
   const c2 = convert(maxX, minY);
   const c3 = convert(maxX, maxY);
   const c4 = convert(minX, maxY);
   const roomPolygon = `${c1.x},${c1.y} ${c2.x},${c2.y} ${c3.x},${c3.y} ${c4.x},${c4.y}`;
 
-  // WebSocket connection
+  // WebSocket
   useEffect(() => {
     const ws = new WebSocket("ws://localhost:8765/ws");
 
     ws.onmessage = (event) => {
       const msg = JSON.parse(event.data);
-      if (msg.supervisor_x !== undefined) {
-        const p = convert(msg.supervisor_x, msg.supervisor_y);
+
+      // -------------------------
+      // TYPE: POSITION UPDATE
+      // -------------------------
+      if (msg.type === "position") {
+        const p = convert(msg.x, msg.y);
         setPath((prev) => [...prev, p]);
+      }
+
+      // -------------------------
+      // TYPE: CLEANED ZONE UPDATE
+      // -------------------------
+      if (msg.type === "cleaned_zone") {
+        const newPoints = msg.zones.map((z) => convert(z.x, z.y));
+        setCleaned(newPoints);
+
+        // Show CLEAN state for UI feedback
+        setRobotState("CLEAN");
+        setTimeout(() => setRobotState("EXPLORE"), 2000);
       }
     };
 
@@ -45,10 +64,24 @@ export default function App() {
     <div style={styles.page}>
       <h1 style={styles.title}>Robot Path Visualization</h1>
 
+      {/* Robot State Label */}
+      <div style={styles.stateBox}>
+        State:{" "}
+        <span
+          style={{
+            color: robotState === "CLEAN" ? "#2ecc71" : "#3498db",
+            fontWeight: 700,
+          }}
+        >
+          {robotState}
+        </span>
+      </div>
+
+      {/* Map display */}
       <div style={styles.canvasWrapper}>
         <svg width={width} height={height} style={styles.svg}>
-
-          {/* Room border */}
+          
+          {/* Room frame */}
           <polygon
             points={roomPolygon}
             fill="none"
@@ -56,7 +89,19 @@ export default function App() {
             strokeWidth={4}
           />
 
-          {/* Path */}
+          {/* Cleaned zones */}
+          {cleaned.map((p, idx) => (
+            <circle
+              key={idx}
+              cx={p.x}
+              cy={p.y}
+              r="8"
+              fill="#2ecc71"
+              opacity="0.85"
+            />
+          ))}
+
+          {/* Path polyline */}
           <polyline
             points={path.map((p) => `${p.x},${p.y}`).join(" ")}
             fill="none"
@@ -77,18 +122,23 @@ const styles = {
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
-    justifyContent: "flex-start",
     paddingTop: "40px",
     fontFamily: "'Inter', sans-serif",
   },
-
   title: {
     fontSize: "32px",
     fontWeight: "700",
-    marginBottom: "20px",
+    marginBottom: "10px",
     color: "#333",
   },
-
+  stateBox: {
+    fontSize: "20px",
+    marginBottom: "20px",
+    background: "white",
+    padding: "10px 18px",
+    borderRadius: "8px",
+    boxShadow: "0 4px 8px rgba(0,0,0,0.1)",
+  },
   canvasWrapper: {
     width: "1200px",
     height: "800px",
@@ -99,7 +149,6 @@ const styles = {
     alignItems: "center",
     justifyContent: "center",
   },
-
   svg: {
     borderRadius: "12px",
   },

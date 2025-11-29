@@ -5,7 +5,7 @@ app = FastAPI()
 
 active_clients = []
 active_supervisors = []
-cleaned_zones = set()
+cleaned_zones = []
 
 @app.websocket("/ws")
 async def websocket_frontend(websocket: WebSocket):
@@ -15,7 +15,6 @@ async def websocket_frontend(websocket: WebSocket):
 
     try:
         while True:
-            # 前端一般不会发消息，这里只是防掉线
             await websocket.receive_text()
 
     except WebSocketDisconnect:
@@ -32,13 +31,22 @@ async def websocket_supervisor(websocket: WebSocket):
         while True:
             data = await websocket.receive_text()
             msg = json.loads(data)
-            print('msg',msg)
-            # 广播 supervisor 坐标到前端
-            for c in active_clients:
-                await c.send_text(json.dumps({
-                    "supervisor_x": msg["x"],
-                    "supervisor_y": msg["y"]
-                }))
+
+            if msg["event"] == "position":
+                for c in active_clients:
+                    await c.send_text(json.dumps({
+                        "type": "position",
+                        "x": msg["x"],
+                        "y": msg["y"]
+                    }))
+
+            elif msg["event"] == "cleaned":
+                cleaned_zones.append({"x": msg["x"], "y": msg["y"]})
+                for c in active_clients:
+                    await c.send_text(json.dumps({
+                        "type": "cleaned_zone",
+                        "zones": cleaned_zones
+                    }))
 
     except WebSocketDisconnect:
         active_supervisors.remove(websocket)

@@ -3,15 +3,17 @@ import websocket
 import json
 import threading
 import time
+import os
 
 robot = Supervisor()
 TIME_STEP = int(robot.getBasicTimeStep())
 
-# Locate robot
 epuck = robot.getFromDef("CLEANER")
 trans = epuck.getField("translation")
 
-# Create websocket connection
+STATE_FILE = "/tmp/robot_state.json"
+previous_clean_state = False
+
 def ws_sender():
     ws = None
 
@@ -23,31 +25,47 @@ def ws_sender():
                 ws.connect("ws://localhost:8765/ws/supervisor")
                 print("[WS] Connected!")
 
-            # send loop
             while True:
                 pos = trans.getSFVec3f()
-                rot = epuck.getField("rotation").getSFRotation()
-
                 msg = {
                     "event": "position",
                     "x": pos[0],
-                    "y": pos[1],
-                    "z": pos[2],
-                    "ry": rot[3]
+                    "y": pos[1]
                 }
-
                 ws.send(json.dumps(msg))
+
+                # Detect CLEAN state
+                global previous_clean_state
+                if os.path.exists(STATE_FILE):
+                    with open(STATE_FILE) as f:
+                        state_json = json.load(f)
+                        state = state_json.get("state", "EXPLORE")
+
+                        if state == "CLEAN" and previous_clean_state == False:
+                            # First frame of CLEAN = zone cleaned
+                            clean_msg = {
+                                "event": "cleaned",
+                                "x": pos[0],
+                                "y": pos[1]
+                            }
+                            ws.send(json.dumps(clean_msg))
+                            print("[WS] Cleaned zone sent:", clean_msg)
+
+                            previous_clean_state = True
+
+                        if state != "CLEAN":
+                            previous_clean_state = False
+
                 time.sleep(0.1)
 
         except Exception as e:
             print("[WS ERROR]", e)
             ws = None
-            time.sleep(1)  # retry after 1s
+            time.sleep(1)
 
-
-# Start WebSocket thread
+# background websocket thread
 threading.Thread(target=ws_sender, daemon=True).start()
 
-# Normal Webots step loop
+# normal supervisor loop
 while robot.step(TIME_STEP) != -1:
     pass
