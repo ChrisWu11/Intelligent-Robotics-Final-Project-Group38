@@ -6,7 +6,7 @@ TURN_SPEED = 3.5
 initialized = False
 sensors = []
 
-TIME_STEP = 32   # 加这个即可
+TIME_STEP = 32   
 
 
 def init_obstacle_sensors(robot):

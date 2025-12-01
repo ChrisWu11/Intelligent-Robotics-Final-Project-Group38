@@ -23,7 +23,6 @@ fsm = BehaviorFSM()
 clean_cooldown = 0.0
 
 def write_state_to_file(state):
-    """让 supervisor 能够知道当前是否在 CLEAN 状态"""
     with open("/tmp/robot_state.json", "w") as f:
         json.dump({"state": state}, f)
 
