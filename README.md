@@ -2,15 +2,15 @@
 
 ### *University of Birmingham – Group 38*
 
-GitHub Repository: https://github.com/ChrisWu11/Intelligent-Robotics-Final-Project-Group38
+GitHub Repository: [https://github.com/ChrisWu11/Intelligent-Robotics-Final-Project-Group38](https://github.com/ChrisWu11/Intelligent-Robotics-Final-Project-Group38)
 
 This repository implements a complete intelligent indoor cleaning robot system, including:
 
-- 🏠 **Webots simulation environment**
-- 🤖 **Python robot controller** (vision detection + obstacle avoidance + FSM)
-- 🎯 **Supervisor for global position tracking**
-- 🌐 **FastAPI backend (WebSocket-based)**
-- 💻 **React frontend for real-time visualization**
+* 🏠 **Webots simulation environment**
+* 🤖 **Python robot controller** (vision detection + obstacle avoidance + FSM)
+* 🎯 **Supervisor for global position tracking**
+* 🌐 **FastAPI backend (WebSocket-based)**
+* 💻 **React frontend for real-time visualization**
 
 ---
 
@@ -18,12 +18,12 @@ This repository implements a complete intelligent indoor cleaning robot system, 
 
 ### Core Features
 
-- Autonomous exploration & obstacle avoidance
-- Red cleaning-zone detection using **HSV + Canny + Contours**
-- Finite State Machine (**EXPLORE / CLEAN**)
-- Cleaned zone marking (green dots)
-- Real-time WebSocket pipeline
-- Frontend visualization of trajectory, robot orientation, and cleaned zones
+* Autonomous exploration & obstacle avoidance
+* Red cleaning-zone detection using **HSV + Canny + Contours**
+* Finite State Machine (**EXPLORE / CLEAN**)
+* Cleaned zone marking (green dots)
+* Real-time WebSocket pipeline
+* Frontend visualization of trajectory, robot orientation, and cleaned zones
 
 ---
 
@@ -79,28 +79,28 @@ The Webots world includes a furnished apartment, red cleaning zones, an E-puck r
 
 ### perception.py – Red-zone detection
 
-- HSV segmentation
-- Canny edge detection
-- Contour extraction
-- Area thresholding
+* HSV segmentation
+* Canny edge detection
+* Contour extraction
+* Area thresholding
 
-### navigation.py – Movement & obstacle avoidance  
+### navigation.py – Movement & obstacle avoidance
 
-- Forward movement
-- Reactive avoidance
+* Forward movement
+* Reactive avoidance
 
-### behavior_fsm.py – Finite State Machine  
+### behavior_fsm.py – Finite State Machine
 
-- EXPLORE  
-- CLEAN  
+* EXPLORE
+* CLEAN
 
-### cleaner_controller.py – Main Loop  
+### cleaner_controller.py – Main Loop
 
-- Capture camera frames  
-- Run perception  
-- Update FSM  
-- Perform cleaning duration  
-- Resume exploration  
+* Capture camera frames
+* Run perception
+* Update FSM
+* Perform cleaning duration
+* Resume exploration
 
 ---
 
@@ -124,8 +124,8 @@ Sends messages every 0.1s:
 
 Two WebSocket endpoints:
 
-- `/ws/supervisor`
-- `/ws`
+* `/ws/supervisor`
+* `/ws`
 
 Example broadcast:
 
@@ -144,11 +144,36 @@ Example broadcast:
 
 Displays:
 
-- Map boundary
-- Robot trajectory
-- Orientation triangle
-- Cleaned dots
-- State label
+* Map boundary
+* Robot trajectory
+* Orientation triangle
+* Cleaned dots
+* State label
+
+---
+
+## ⚠️ Important Notes
+
+### Webots Python Dependencies
+
+Webots does **not** include some Python libraries by default (e.g., `websocket`, `threading`).
+You must install these dependencies into the **Python environment used by Webots**, otherwise the simulation will raise import errors.
+
+To find Webots' Python path:
+
+```
+which python3
+```
+
+and install dependencies:
+
+```
+pip install websocket-client
+```
+
+### Frontend Node Version Requirement
+
+The frontend requires **Node.js v20 or above**. Using older versions may cause build or runtime errors.
 
 ---
 
@@ -174,4 +199,4 @@ npm install
 npm run dev
 ```
 
-Visit <http://localhost:5173>
+Visit [http://localhost:5173](http://localhost:5173)
